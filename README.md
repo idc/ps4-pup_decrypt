@@ -10,3 +10,8 @@ This will output a number of files (depending if a normal or a recovery update):
 * `/mnt/usb0/PS4UPDATE4.PUP.dec`
 
 These decrypted updates can then be further unpacked using a tool capable of doing so.
+
+## Note
+The PS4 will refuse to decrypt updates in some cases:
+* Versions older than the installed version (for the most part, there's exceptions for things like beta versions).
+* Versions for a different product code (retail cannot decrypt test or debug updates).
