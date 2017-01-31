@@ -1,7 +1,6 @@
 #include "ps4.h"
 
 #include <assert.h>
-#include <stddef.h>
 
 #define DEBUG_SOCKET
 #include "defines.h"
@@ -41,7 +40,7 @@ int verify_segment(const decrypt_state state,
                                 segment->compressed_size, additional);
   if (result != 0)
   {
-    printfsocket("Failed to verify segment %d! %d\n", index, *__error());
+    printfsocket("Failed to verify segment %d! %d\n", index, errno);
     goto end;
   }
 
@@ -136,7 +135,7 @@ int decrypt_segment(const decrypt_state state,
                                    index, buffer, encrypted_size);
     if (result != 0)
     {
-      printfsocket("Failed to decrypt segment %d! %d\n", index, *__error());
+      printfsocket("Failed to decrypt segment %d! %d\n", index, errno);
       goto end;
     }
 
@@ -184,7 +183,7 @@ int decrypt_segment_blocks(const decrypt_state state,
   if (result != 0)
   {
     printfsocket("Failed to decrypt table for segment %d! %d\n",
-                 index, *__error());
+                 index, errno);
     goto end;
   }
 
@@ -277,7 +276,7 @@ int decrypt_segment_blocks(const decrypt_state state,
     if (result < 0)
     {
       printfsocket("Failed to decrypt block for segment %d! %d\n",
-                   index, *__error());
+                   index, errno);
       goto end;
     }
 
@@ -359,7 +358,7 @@ int decrypt_pup_data(const decrypt_state state)
                                   0);//state.pup_type);
     if (result != 0)
     {
-      printfsocket("Failed to decrypt header! %d\n", *__error());
+      printfsocket("Failed to decrypt header! %d\n", errno);
       goto end;
     }
   }

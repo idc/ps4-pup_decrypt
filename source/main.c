@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include <assert.h>
 
 #include "ps4.h"
