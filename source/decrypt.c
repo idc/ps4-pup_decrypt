@@ -30,7 +30,7 @@ int verify_segment(const decrypt_state state,
   int read = fread(buffer, segment->compressed_size, 1, state.input_file);
   if (read != 1)
   {
-    printfsocket("Failed to read segment %d for verification! %d\n",
+    printfsocket("Failed to read segment #%d for verification! %d\n",
                  index, read);
     result = -1;
     goto end;
@@ -40,7 +40,7 @@ int verify_segment(const decrypt_state state,
                                 segment->compressed_size, additional);
   if (result != 0)
   {
-    printfsocket("Failed to verify segment %d! %d\n", index, errno);
+    printfsocket("Failed to verify segment #%d! %d\n", index, errno);
     goto end;
   }
 
@@ -63,7 +63,7 @@ int verify_segments(const decrypt_state state,
     pup_segment* segment = &segments[i];
     if ((segment->flags & 0xF0000000) == 0xE0000000)
     {
-      printfsocket("Verifying segment %d (%d)... [1]\n",
+      printfsocket("Verifying segment #%d (%d)... [1]\n",
                    i, segment->flags >> 20);
       result = verify_segment(state, i, segment, 1);
       if (result < 0)
@@ -76,10 +76,9 @@ int verify_segments(const decrypt_state state,
   for (int i = 0; i < segment_count; i++)
   {
     pup_segment* segment = &segments[i];
-
     if ((segment->flags & 0xF0000000) == 0xF0000000)
     {
-      printfsocket("Verifying segment %d (%d)... [0]\n",
+      printfsocket("Verifying segment #%d (%d)... [0]\n",
                    i, segment->flags >> 20);
       result = verify_segment(state, i, segment, 0);
       if (result < 0)
@@ -97,7 +96,7 @@ int decrypt_segment(const decrypt_state state,
                     uint16_t index, pup_segment* segment)
 {
   int result = -1;
-  uint8_t* buffer;
+  uint8_t* buffer = NULL;
 
   buffer = memalign(0x4000, segment->compressed_size);
   fseek(state.input_file,
@@ -126,7 +125,7 @@ int decrypt_segment(const decrypt_state state,
     int read = fread(buffer, encrypted_size, 1, state.input_file);
     if (read != 1)
     {
-      printfsocket("Failed to read segment %d! %d\n", index, read);
+      printfsocket("Failed to read segment #%d! #%d\n", index, read);
       result = -1;
       goto end;
     }
@@ -135,7 +134,7 @@ int decrypt_segment(const decrypt_state state,
                                    index, buffer, encrypted_size);
     if (result != 0)
     {
-      printfsocket("Failed to decrypt segment %d! %d\n", index, errno);
+      printfsocket("Failed to decrypt segment #%d! %d\n", index, errno);
       goto end;
     }
 
@@ -173,16 +172,17 @@ int decrypt_segment_blocks(const decrypt_state state,
   int read = fread(table_buffer, table_length, 1, state.input_file);
   if (read != 1)
   {
-    printfsocket("Failed to read table for segment %d! %d\n", index, read);
+    printfsocket("  Failed to read table for segment #%d! %d\n", index, read);
     result = -1;
     goto end;
   }
 
+  printfsocket("  Decrypting table #%d for segment #%d\n", table_index, index);
   result = pupup_decrypt_segment(state.device_fd,
                                  table_index, table_buffer, table_length);
   if (result != 0)
   {
-    printfsocket("Failed to decrypt table for segment %d! %d\n",
+    printfsocket("  Failed to decrypt table for segment #%d! %d\n",
                  index, errno);
     goto end;
   }
@@ -205,7 +205,7 @@ int decrypt_segment_blocks(const decrypt_state state,
     size_t valid_table_length = block_count * (32 + sizeof(pup_block_info));
     if (valid_table_length != table_length)
     {
-      printfsocket("Strange segment %d table: %llu vs %llu\n",
+      printfsocket("  Strange segment #%d table: %llu vs %llu\n",
                    index, valid_table_length, table_length);
     }
     block_infos = (pup_block_info*)&table_buffer[32 * block_count];
@@ -265,7 +265,7 @@ int decrypt_segment_blocks(const decrypt_state state,
     read = fread(block_buffer, read_size, 1, state.input_file);
     if (read != 1)
     {
-      printfsocket("Failed to read block %d for segment %d! %d\n",
+      printfsocket("  Failed to read block %d for segment #%d! %d\n",
                    i, index, read);
       goto end;
     }
@@ -275,7 +275,7 @@ int decrypt_segment_blocks(const decrypt_state state,
                                         table_buffer, table_length);
     if (result < 0)
     {
-      printfsocket("Failed to decrypt block for segment %d! %d\n",
+      printfsocket("  Failed to decrypt block for segment #%d! %d\n",
                    index, errno);
       goto end;
     }
@@ -304,18 +304,21 @@ int find_table_segment(int index, pup_segment* segments, int segment_count,
 {
   if (((index | 0x100) & 0xF00) == 0xF00)
   {
-    printfsocket("Can't do table for segment %d\n", index);
+    printfsocket("Can't do table for segment #%d\n", index);
     *table_index = -1;
     return -1;
   }
 
   for (int i = 0; i < segment_count; i++)
   {
-    uint32_t id = segments[i].flags >> 20;
-    if (id == index)
+    if (segments[i].flags & 1)
     {
-      *table_index = i;
-      return 0;
+      uint32_t id = segments[i].flags >> 20;
+      if (id == index)
+      {
+        *table_index = i;
+        return 0;
+      }
     }
   }
 
@@ -334,7 +337,7 @@ int decrypt_pup_data(const decrypt_state state)
   read = fread(&file_header, sizeof(file_header), 1, state.input_file);
   if (read != 1)
   {
-    printfsocket("Failed to read file header! %u\n", read);
+    printfsocket("Failed to read file header! (%u)\n", read);
     goto end;
   }
 
@@ -347,12 +350,13 @@ int decrypt_pup_data(const decrypt_state state)
                header_size - sizeof(file_header), 1, state.input_file);
   if (read != 1)
   {
-    printfsocket("Failed to read header! %u\n", read);
+    printfsocket("Failed to read header! (%u)\n", read);
     goto end;
   }
 
   if ((file_header.flags & 1) == 0)
   {
+    printfsocket("Decrypting header...\n");
     result = pupup_decrypt_header(state.device_fd,
                                   header_data, header_size,
                                   0);//state.pup_type);
@@ -381,6 +385,17 @@ int decrypt_pup_data(const decrypt_state state)
     printfsocket("Failed to verify segments!\n");
   }
 
+  for (int i = 0; i < header->segment_count; i++)
+  {
+    pup_segment* segment = &segments[i];
+    printfsocket("%4d i=%4u b=%u c=%u t=%u r=%05X\n",
+                  i, segment->flags >> 20,
+                  (segment->flags & 0x800) != 0,
+                  (segment->flags & 0x8) != 0,
+                  (segment->flags & 0x1) != 0,
+                   segment->flags & 0xFF7F6);
+  }
+
   printfsocket("Decrypting %d segments...\n", header->segment_count);
   for (int i = 0; i < header->segment_count; i++)
   {
@@ -389,12 +404,12 @@ int decrypt_pup_data(const decrypt_state state)
     uint32_t special = segment->flags & 0xF0000000;
     if (special == 0xE0000000)
     {
-      printfsocket("Skipping additional signature segment %d!\n", i);
+      printfsocket("Skipping additional signature segment #%d!\n", i);
       continue;
     }
     else if (special == 0xF0000000)
     {
-      printfsocket("Skipping watermark segment %d!\n", i);
+      printfsocket("Skipping watermark segment #%d!\n", i);
       continue;
     }
 
@@ -408,7 +423,7 @@ int decrypt_pup_data(const decrypt_state state)
                                   &table_index);
       if (result < 0)
       {
-        printfsocket("Failed to find table for segment %d!\n", i);
+        printfsocket("Failed to find table for segment #%d!\n", i);
         continue;
       }
 
@@ -470,8 +485,6 @@ void decrypt_pup(const char* name, FILE* input, off_t baseOffset, int fd)
     goto end;
   }
 
-  printfsocket("Decrypting header...\n");
-
   decrypt_state state;
   state.input_file = input;
   state.input_base_offset = baseOffset;
@@ -479,7 +492,6 @@ void decrypt_pup(const char* name, FILE* input, off_t baseOffset, int fd)
   state.output_base_offset = 0;
   state.device_fd = fd;
   state.pup_type = type;
-
   decrypt_pup_data(state);
 
 end:
