@@ -385,6 +385,7 @@ int decrypt_pup_data(const decrypt_state state)
     printfsocket("Failed to verify segments!\n");
   }
 
+  /*
   for (int i = 0; i < header->segment_count; i++)
   {
     pup_segment* segment = &segments[i];
@@ -395,6 +396,7 @@ int decrypt_pup_data(const decrypt_state state)
                   (segment->flags & 0x1) != 0,
                    segment->flags & 0xFF7F6);
   }
+  */
 
   printfsocket("Decrypting %d segments...\n", header->segment_count);
   for (int i = 0; i < header->segment_count; i++)
