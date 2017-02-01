@@ -12,6 +12,8 @@ This will output a number of files (depending if a normal or a recovery update):
 These decrypted updates can then be unpacked using [pup_unpack](https://github.com/idc/ps4-pup_unpack/).
 
 ## Notes
+You will probably need [my fork of PS4-SDK that has my changes to libPS4](https://github.com/idc/PS4-SDK) to build.
+
 The PS4 will refuse to decrypt updates in some cases:
 * Versions older than the installed version (for the most part, there's exceptions for things like beta versions).
 * Versions for a different product code (retail cannot decrypt test or debug updates).
